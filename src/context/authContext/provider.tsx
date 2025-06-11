@@ -32,7 +32,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = (props) => {
     sessionStorage.removeItem("tenpo-token");
     setIsAuthenticated(false);
     setUser(undefined);
-    navigate("/login");
+    navigate("/login", { replace: true });
   };
 
   return (

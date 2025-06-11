@@ -3,7 +3,7 @@ import LoginFormComponent from "../../components/molecules/loginFormComponent";
 import { AuthContext } from "../../context/authContext/context";
 
 const LoginPage: React.FC = () => {
-  const { login } = useContext(AuthContext);
+  const { loading, login } = useContext(AuthContext);
 
   const handleLogin = async (values: { email: string; password: string }) => {
     await login(values.email, values.password);
@@ -15,7 +15,10 @@ const LoginPage: React.FC = () => {
         <p className="text-xl text-gray-900 dark:text-gray-100 mb-4 font-bold">
           Iniciar sesión
         </p>
-        <LoginFormComponent onSubmit={(values) => handleLogin(values)} />
+        <LoginFormComponent
+          disabled={loading}
+          onSubmit={async (values) => await handleLogin(values)}
+        />
       </div>
     </div>
   );

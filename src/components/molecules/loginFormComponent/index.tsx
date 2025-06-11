@@ -6,6 +6,7 @@ import ButtonComponent, {
 } from "../../atoms/buttonComponent";
 
 interface IProps {
+  disabled?: boolean;
   onSubmit: (values: ILoginFormValues) => void;
 }
 
@@ -32,6 +33,7 @@ const LoginFormComponent: React.FC<IProps> = (props) => {
         label="Correo electrónico"
         placeholder="ejemplo@correo.com"
         errorMessage={errors?.email?.message}
+        disabled={props.disabled}
         {...register("email", { required: "Correo electrónico obligatório" })}
       />
       <InputComponent
@@ -39,9 +41,14 @@ const LoginFormComponent: React.FC<IProps> = (props) => {
         label="Contraseña"
         placeholder="********"
         errorMessage={errors?.password?.message}
+        disabled={props.disabled}
         {...register("password", { required: "Contraseña obligatória" })}
       />
-      <ButtonComponent type="submit" variant={ButtonVariantEnum.primary}>
+      <ButtonComponent
+        type="submit"
+        variant={ButtonVariantEnum.primary}
+        disabled={props.disabled}
+      >
         Iniciar sesión
       </ButtonComponent>
     </form>

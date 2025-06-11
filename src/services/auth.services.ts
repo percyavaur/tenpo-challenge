@@ -22,7 +22,7 @@ const fakeLoginService: (
               email: "john.doe@test.com",
             },
           }),
-        1000
+        2000
       );
     }
   );

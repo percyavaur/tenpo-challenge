@@ -11,7 +11,7 @@ export const PrivateRoute: React.FC<IProps> = ({ children }) => {
 
   if (loading) {
     return (
-      <div className="text-xl text-gray-900 dark:text-gray-100 mb-4 font-bold">
+      <div className="text-xl text-gray-900 dark:text-gray-100 pl-4 pt-4 mb-4 font-bold">
         Cargando...
       </div>
     );

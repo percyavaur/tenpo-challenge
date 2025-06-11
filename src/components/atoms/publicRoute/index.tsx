@@ -7,15 +7,7 @@ interface IProps {
 }
 
 export const PublicRoute: React.FC<IProps> = ({ children }) => {
-  const { isAuthenticated, loading } = useContext(AuthContext);
-
-  if (loading) {
-    return (
-      <div className="text-xl text-gray-900 dark:text-gray-100 mb-4 font-bold">
-        Cargando...
-      </div>
-    );
-  }
+  const { isAuthenticated } = useContext(AuthContext);
 
   return isAuthenticated ? <Navigate to="/home" replace /> : children;
 };

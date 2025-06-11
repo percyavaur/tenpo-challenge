@@ -42,7 +42,7 @@ const ButtonComponent = React.forwardRef<HTMLButtonElement, IProps>(
       <>
         <button
           ref={ref}
-          className={`rounded-md h-[48px] p-2 border border-solid border-black cursor-pointer ${drawVariantClass(
+          className={`rounded-md h-[48px] p-2 border border-solid border-black cursor-pointer disabled:opacity-30 ${drawVariantClass(
             variant
           )}`}
           {...buttonProps}
