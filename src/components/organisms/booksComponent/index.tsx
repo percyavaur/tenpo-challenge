@@ -62,6 +62,7 @@ const BooksComponent: React.FC = () => {
       .then((res) => {
         setBooks(res.data.works);
         setTotalBooks(res.data.work_count);
+        toStartOfList();
       })
       .catch((error) => {
         console.log("error", error);
@@ -74,8 +75,15 @@ const BooksComponent: React.FC = () => {
   const getSubjectLabel = (subject: string) =>
     subjects.find((e) => e.value === subject)?.label;
 
+  const toStartOfList = () => {
+    const el = document.getElementById("booksList");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
   return (
-    <div>
+    <div id="booksList">
       <div className="max-w-[240px] mb-3">
         <SelectComponent
           name="subjectlist"
