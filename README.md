@@ -8,18 +8,18 @@ Una aplicación construida con Vite, React y TypeScript siguiendo la metodologí
 
 ## Tabla de Contenidos
 
-- [Descripción](#descripción)  
-- [Demo](#demo)  
-- [Tecnologías](#tecnologías)  
-- [Estructura del Proyecto](#estructura-del-proyecto)  
-- [Requisitos Previos](#requisitos-previos)  
-- [Instalación](#instalación)  
-- [Scripts Disponibles](#scripts-disponibles)  
-- [Atomic Design](#atomic-design)  
-- [Despliegue](#despliegue)  
-- [Contribuir](#contribuir)  
-- [Licencia](#licencia)  
-- [Contacto](#contacto)  
+- [Descripción](#descripción)
+- [Demo](#demo)
+- [Tecnologías](#tecnologías)
+- [Estructura del Proyecto](#estructura-del-proyecto)
+- [Requisitos Previos](#requisitos-previos)
+- [Instalación](#instalación)
+- [Scripts Disponibles](#scripts-disponibles)
+- [Atomic Design](#atomic-design)
+- [Despliegue](#despliegue)
+- [Contribuir](#contribuir)
+- [Licencia](#licencia)
+- [Contacto](#contacto)
 
 ---
 
@@ -27,10 +27,10 @@ Una aplicación construida con Vite, React y TypeScript siguiendo la metodologí
 
 Tenpo Challenge es un reto de front-end donde debes levantar un proyecto creado con Vite, React y TypeScript, demostrando:
 
-- Configuración de Vite para desarrollo y producción  
-- Uso de React y TypeScript para componentes tipados  
-- Estructura de carpetas basada en Atomic Design  
-- Despliegue continuo a Firebase Hosting  
+- Configuración de Vite para desarrollo y producción
+- Uso de React y TypeScript para componentes tipados
+- Estructura de carpetas basada en Atomic Design
+- Despliegue continuo a Firebase Hosting
 
 ---
 
@@ -44,11 +44,11 @@ La aplicación está desplegada y accesible en:
 
 ## Tecnologías
 
-- [Vite](https://vitejs.dev/) – Bundler ultrarrápido  
-- [React](https://reactjs.org/) – Biblioteca de UI  
-- [TypeScript](https://www.typescriptlang.org/) – Tipado estático  
-- [Tailwind CSS](https://tailwindcss.com/) (opcional) – Utilidades de estilos  
-- [Firebase Hosting](https://firebase.google.com/products/hosting) – Hosting gratuito para SPAs  
+- [Vite](https://vitejs.dev/) – Bundler ultrarrápido
+- [React](https://reactjs.org/) – Biblioteca de UI
+- [TypeScript](https://www.typescriptlang.org/) – Tipado estático
+- [Tailwind CSS](https://tailwindcss.com/) (opcional) – Utilidades de estilos
+- [Firebase Hosting](https://firebase.google.com/products/hosting) – Hosting gratuito para SPAs
 
 ---
 
@@ -86,27 +86,27 @@ La aplicación está desplegada y accesible en:
 
 ## Requisitos Previos
 
-- Node.js v16+  
-- npm v8+ o yarn v1/v2  
+- Node.js v16+
+- npm v8+
 
 ---
 
 ## Instalación
 
-1. Clona el repositorio  
+1. Clona el repositorio
    ```bash
    gh repo clone https://github.com/percyavaur/tenpo-challenge.git
    cd tenpo-challenge
    ```
-2. Instala dependencias  
+2. Instala dependencias
    ```bash
    npm install
    ```
-3. Crea un archivo `.env` en la raíz con tus variables (opcional):  
+3. Crea un archivo `.env` en la raíz con tus variables (opcional):
    ```
    VITE_API_URL=https://openlibrary.org
    ```
-4. Levanta el servidor de desarrollo  
+4. Levanta el servidor de desarrollo
    ```bash
    npm run dev
    ```
@@ -116,11 +116,11 @@ La aplicación está desplegada y accesible en:
 
 ## Scripts Disponibles
 
-| Script       | Descripción                                  |
-| ------------ | -------------------------------------------- |
-| `dev`        | Inicia Vite en modo desarrollo               |
-| `build`      | Genera versión optimizada para producción    |
-| `preview`    | Levanta servidor para revisión de `build`    |
+| Script    | Descripción                               |
+| --------- | ----------------------------------------- |
+| `dev`     | Inicia Vite en modo desarrollo            |
+| `build`   | Genera versión optimizada para producción |
+| `preview` | Levanta servidor para revisión de `build` |
 
 ---
 
@@ -128,14 +128,15 @@ La aplicación está desplegada y accesible en:
 
 Se siguió la metodología Atomic Design para organizar los componentes:
 
-1. **Átomos**: Botones, Inputs, Labels  
-2. **Moléculas**: Form Groups, Card sencillo  
-3. **Organismos**: Cabeceras, Menús, Formularios completos  
-4. **Pages**: Vistas finales que combinas los templates con datos reales  
+1. **Átomos**: Botones, Inputs, Labels
+2. **Moléculas**: Form Groups, Card sencillo
+3. **Organismos**: Cabeceras, Menús, Formularios completos
+4. **Pages**: Vistas finales que combinas los templates con datos reales
 
 ---
 
 ## Propuesta de mejora
+
 1. **Debounce** Implementar debounce cuando sea innecesario llamar a una api en cada cambio, ejemplo:
    - Un input que llame al endpoint al momento de acabar la escritura y no en cada carácter añadido.
 2. **Caching** Uso de cache para almacenar información poco mutable, esto reduce el tiempo de petición en un endpoint
