@@ -95,18 +95,16 @@ La aplicación está desplegada y accesible en:
 
 1. Clona el repositorio  
    ```bash
-   git clone https://github.com/tu-usuario/tenpo-challenge.git
+   gh repo clone https://github.com/percyavaur/tenpo-challenge.git
    cd tenpo-challenge
    ```
 2. Instala dependencias  
    ```bash
    npm install
-   # o
-   yarn install
    ```
 3. Crea un archivo `.env` en la raíz con tus variables (opcional):  
    ```
-   VITE_API_URL=https://api.ejemplo.com
+   VITE_API_URL=https://openlibrary.org
    ```
 4. Levanta el servidor de desarrollo  
    ```bash
