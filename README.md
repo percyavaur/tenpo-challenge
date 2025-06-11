@@ -132,3 +132,11 @@ Se siguió la metodología Atomic Design para organizar los componentes:
 2. **Moléculas**: Form Groups, Card sencillo  
 3. **Organismos**: Cabeceras, Menús, Formularios completos  
 4. **Pages**: Vistas finales que combinas los templates con datos reales  
+
+---
+
+## Propuesta de mejora
+1. **Debounce** Implementar debounce cuando sea innecesario llamar a una api en cada cambio, ejemplo:
+   - Un input que llame al endpoint al momento de acabar la escritura y no en cada carácter añadido.
+2. **Caching** Uso de cache para información poco mutable, esto reduce el tiempo de petición en un endpoint
+   y evita abrir una conexión a la base de datos innecesaria.
