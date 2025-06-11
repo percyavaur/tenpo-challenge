@@ -1,0 +1,20 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+body {
+  background-color: #ffffff; /* white por defecto */
+}
+
+body {
+  background-color: #ffffff;
+}
+
+.dark body {
+  background-color: #101828;
+}
+
+select {
+  -moz-appearance: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
