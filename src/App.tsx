@@ -263,7 +263,13 @@ function App() {
     };
   }, [dataset, deferredQuery]);
 
-  const activeColumns = dataset?.columns ?? (source === "synthetic" ? [...SYNTHETIC_COLUMNS] : CSV_SAMPLE_COLUMNS);
+  const activeColumns = useMemo(() => {
+    if (dataset?.columns) {
+      return dataset.columns;
+    }
+
+    return source === "synthetic" ? [...SYNTHETIC_COLUMNS] : CSV_SAMPLE_COLUMNS;
+  }, [dataset, source]);
   const configuredRowCount = dataset?.totalRows ?? (source === "synthetic" ? selectedSize : 0);
   const filteredCount = filterResult?.filteredCount ?? 0;
   const logicalListHeight = filteredCount * ROW_HEIGHT;
