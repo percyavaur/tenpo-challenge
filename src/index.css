@@ -141,7 +141,7 @@ code {
 
 .controls {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1rem;
   margin-top: 1rem;
   padding: 1.15rem;
@@ -289,7 +289,6 @@ code {
 .grid-header,
 .virtual-row {
   display: grid;
-  grid-template-columns: 110px minmax(0, 1fr) minmax(0, 1fr);
   gap: 0.8rem;
   align-items: center;
 }
@@ -386,6 +385,26 @@ code {
   pointer-events: none;
 }
 
+.upload-empty-state {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.35rem;
+  min-height: min(64vh, 760px);
+  text-align: center;
+  border: 1px dashed var(--border-strong);
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(15, 118, 110, 0.05), transparent 18%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(248, 243, 233, 0.82));
+  color: var(--ink-soft);
+}
+
+.upload-empty-state p,
+.upload-empty-state small {
+  margin: 0;
+}
+
 .empty-state p,
 .empty-state small {
   margin: 0;
@@ -400,7 +419,6 @@ code {
 
 @media (max-width: 1180px) {
   .hero,
-  .controls,
   .metrics-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -413,7 +431,6 @@ code {
   }
 
   .hero,
-  .controls,
   .metrics-grid {
     grid-template-columns: 1fr;
   }
@@ -421,12 +438,6 @@ code {
   .list-toolbar {
     flex-direction: column;
     align-items: flex-start;
-  }
-
-  .grid-header,
-  .virtual-row {
-    grid-template-columns: 88px minmax(0, 1fr) minmax(0, 1fr);
-    gap: 0.45rem;
   }
 
   .virtual-scroll-region {
