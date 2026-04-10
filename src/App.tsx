@@ -67,9 +67,28 @@ function buildShuffleSeed(totalRows: number, shuffleCount: number): number {
   );
 }
 
+function getWinnerName(row: RowData | null): string {
+  if (!row) {
+    return "Ganador pendiente";
+  }
+
+  return row.cells[0]?.trim() || `Participante ${row.id}`;
+}
+
+function getWinnerCode(row: RowData | null): string {
+  if (!row) {
+    return "Sin código";
+  }
+
+  return row.cells[1]?.trim() || `ID-${row.id}`;
+}
+
 function App() {
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
+  const [isWinnerOverlayOpen, setIsWinnerOverlayOpen] = useState(false);
+  const [winnerRow, setWinnerRow] = useState<RowData | null>(null);
+  const [winnerIds, setWinnerIds] = useState<number[]>([]);
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const [dataset, setDataset] = useState<DatasetState | null>(null);
@@ -90,6 +109,9 @@ function App() {
     setDisplayOrder(null);
     setShuffleCount(0);
     setIsShuffling(false);
+    setWinnerRow(null);
+    setWinnerIds([]);
+    setIsWinnerOverlayOpen(false);
 
     const controller = new AbortController();
 
@@ -200,13 +222,14 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!isCsvModalOpen) {
+    if (!isCsvModalOpen && !isWinnerOverlayOpen) {
       return;
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setIsCsvModalOpen(false);
+        setIsWinnerOverlayOpen(false);
       }
     };
 
@@ -215,7 +238,7 @@ function App() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isCsvModalOpen]);
+  }, [isCsvModalOpen, isWinnerOverlayOpen]);
 
   const clearCsvSelection = useCallback(() => {
     shuffleControllerRef.current?.abort();
@@ -226,6 +249,9 @@ function App() {
     setDisplayOrder(null);
     setShuffleCount(0);
     setIsShuffling(false);
+    setWinnerRow(null);
+    setWinnerIds([]);
+    setIsWinnerOverlayOpen(false);
     setQuery("");
     setErrorMessage(null);
 
@@ -287,6 +313,8 @@ function App() {
         startTransition(() => {
           setDisplayOrder(nextOrder);
           setShuffleCount(nextShuffleCount);
+          setWinnerRow(null);
+          setIsWinnerOverlayOpen(false);
         });
       })
       .catch((error: unknown) => {
@@ -297,7 +325,7 @@ function App() {
         setErrorMessage(
           error instanceof Error
             ? error.message
-            : "No se pudieron revolver las filas."
+            : "No se pudieron chocolatear las filas."
         );
       })
       .finally(() => {
@@ -325,15 +353,23 @@ function App() {
   const statusText = isGenerating
     ? "Procesando archivo..."
     : isShuffling
-    ? "Revolviendo filas..."
+    ? "Chocolateando filas..."
     : isFiltering
     ? "Aplicando búsqueda..."
     : null;
   const shuffleSummary = displayOrder
-    ? `Filas revolvidas ${formatNumber(shuffleCount)} ${
+    ? `Filas chocolateadas ${formatNumber(shuffleCount)} ${
         shuffleCount === 1 ? "vez" : "veces"
       }`
     : "Orden original cargado";
+  const canChooseWinner =
+    Boolean(dataset) &&
+    filteredCount > 0 &&
+    shuffleCount >= 3 &&
+    !isGenerating &&
+    !isFiltering &&
+    !isShuffling;
+  const isWinnerMode = shuffleCount >= 3;
 
   const getDisplayRow = useCallback(
     (displayIndex: number): RowData => {
@@ -354,6 +390,58 @@ function App() {
     },
     [activeColumns, dataset, displayOrder, filterResult]
   );
+
+  const pickWinnerRow = useCallback((): RowData | null => {
+    if (filteredCount <= 0) {
+      return null;
+    }
+
+    const pickedIds = new Set(winnerIds);
+    const maxRandomAttempts = Math.min(Math.max(filteredCount, 12), 60);
+
+    for (let attempt = 0; attempt < maxRandomAttempts; attempt += 1) {
+      const randomIndex = Math.floor(Math.random() * filteredCount);
+      const candidate = getDisplayRow(randomIndex);
+
+      if (!pickedIds.has(candidate.id)) {
+        return candidate;
+      }
+    }
+
+    for (let index = 0; index < filteredCount; index += 1) {
+      const candidate = getDisplayRow(index);
+
+      if (!pickedIds.has(candidate.id)) {
+        return candidate;
+      }
+    }
+
+    return null;
+  }, [filteredCount, getDisplayRow, winnerIds]);
+
+  const handleChooseWinner = useCallback(() => {
+    const nextWinner = pickWinnerRow();
+
+    if (!nextWinner) {
+      setErrorMessage("No quedan participantes disponibles para elegir ganador.");
+      return;
+    }
+
+    setWinnerRow(nextWinner);
+    setWinnerIds((currentIds) =>
+      currentIds.includes(nextWinner.id)
+        ? currentIds
+        : [...currentIds, nextWinner.id]
+    );
+    setErrorMessage(null);
+    setIsWinnerOverlayOpen(true);
+  }, [pickWinnerRow]);
+
+  const handleResetForNextPrize = useCallback(() => {
+    clearCsvSelection();
+    setIsCsvModalOpen(false);
+    setIsDraggingCsv(false);
+  }, [clearCsvSelection]);
 
   return (
     <main className="shell">
@@ -473,6 +561,59 @@ function App() {
         </div>
       )}
 
+      {isWinnerOverlayOpen && winnerRow && (
+        <div
+          className="winner-overlay"
+          onClick={() => {
+            setIsWinnerOverlayOpen(false);
+          }}
+        >
+          <section
+            className="winner-stage"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="winner-title"
+            onClick={(event) => {
+              event.stopPropagation();
+            }}
+          >
+            <button
+              type="button"
+              className="winner-close"
+              onClick={() => {
+                setIsWinnerOverlayOpen(false);
+              }}
+            >
+              Cerrar
+            </button>
+
+            <div className="winner-prize-art" aria-hidden="true">
+              <div className="winner-prize-cube"></div>
+              <div className="winner-prize-base"></div>
+              <div className="winner-prize-badge">CSV</div>
+            </div>
+
+            <h2 id="winner-title" className="winner-name">
+              {getWinnerName(winnerRow)}
+            </h2>
+
+            <p className="winner-pill">Ganador</p>
+
+            <p className="winner-code">
+              Código: <strong>{getWinnerCode(winnerRow)}</strong>
+            </p>
+
+            <button
+              type="button"
+              className="winner-next-button"
+              onClick={handleResetForNextPrize}
+            >
+              Siguiente premio
+            </button>
+          </section>
+        </div>
+      )}
+
       {(activeWarning || errorMessage) && (
         <section className="panel alert-panel">
           {activeWarning && <p className="alert warning">{activeWarning}</p>}
@@ -501,25 +642,35 @@ function App() {
           </div>
 
           <div className="list-actions list-action-card">
-            <p className="list-action-title">Mezclar filas</p>
+            <p className="list-action-title">
+              {isWinnerMode ? "Elegir ganador" : "Mezclar filas"}
+            </p>
             <p className="list-proof-note">
               {dataset
-                ? `ID original visible para auditoría. ${shuffleSummary}.`
+                ? isWinnerMode
+                  ? `Ya puedes elegir ganador. ${shuffleSummary}.`
+                  : `ID original visible para auditoría. ${shuffleSummary}.`
                 : "Carga un CSV para habilitar el mezclado de filas."}
             </p>
             <div className="action-row">
               <button
                 type="button"
-                className="secondary-button list-header-button shuffle-button"
-                onClick={handleShuffleRows}
+                className={`secondary-button list-header-button shuffle-button${
+                  isWinnerMode ? " choose-winner-button" : ""
+                }`}
+                onClick={isWinnerMode ? handleChooseWinner : handleShuffleRows}
                 disabled={
-                  !dataset ||
-                  dataset.totalRows === 0 ||
-                  isGenerating ||
-                  isShuffling
+                  isWinnerMode
+                    ? !canChooseWinner
+                    : !dataset ||
+                      dataset.totalRows === 0 ||
+                      isGenerating ||
+                      isShuffling
                 }
               >
-                {isShuffling
+                {isWinnerMode
+                  ? "Elegir ganador"
+                  : isShuffling
                   ? "Chocolateando..."
                   : shuffleCount > 0
                   ? "Chocolatear otra vez"
