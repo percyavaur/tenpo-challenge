@@ -52,12 +52,18 @@ function isAbortError(error: unknown): boolean {
 }
 
 function isCsvFile(file: File): boolean {
-  return file.name.toLowerCase().endsWith(".csv") || file.type === "text/csv" || file.type === "";
+  return (
+    file.name.toLowerCase().endsWith(".csv") ||
+    file.type === "text/csv" ||
+    file.type === ""
+  );
 }
 
 function buildShuffleSeed(totalRows: number, shuffleCount: number): number {
   return (
-    (Math.imul(totalRows + 1, 0x9e3779b1) ^ Math.imul(shuffleCount + 1, 0x85ebca6b)) >>> 0
+    (Math.imul(totalRows + 1, 0x9e3779b1) ^
+      Math.imul(shuffleCount + 1, 0x85ebca6b)) >>>
+    0
   );
 }
 
@@ -168,7 +174,9 @@ function App() {
           }
 
           setErrorMessage(
-            error instanceof Error ? error.message : "No se pudo aplicar el filtro al CSV."
+            error instanceof Error
+              ? error.message
+              : "No se pudo aplicar el filtro al CSV."
           );
         })
         .finally(() => {
@@ -213,7 +221,9 @@ function App() {
     }
 
     if (!isCsvFile(file)) {
-      setErrorMessage("Selecciona un archivo con extensión .csv para continuar.");
+      setErrorMessage(
+        "Selecciona un archivo con extensión .csv para continuar."
+      );
       return;
     }
 
@@ -265,7 +275,9 @@ function App() {
         }
 
         setErrorMessage(
-          error instanceof Error ? error.message : "No se pudieron revolver las filas."
+          error instanceof Error
+            ? error.message
+            : "No se pudieron revolver las filas."
         );
       })
       .finally(() => {
@@ -281,25 +293,29 @@ function App() {
 
   const activeColumns = dataset?.columns ?? CSV_SAMPLE_COLUMNS;
   const filteredCount =
-    filterResult?.filteredCount ?? (dataset && deferredQuery.trim().length === 0 ? dataset.totalRows : 0);
+    filterResult?.filteredCount ??
+    (dataset && deferredQuery.trim().length === 0 ? dataset.totalRows : 0);
   const isDatasetReady = Boolean(dataset && filterResult);
   const activeWarning =
     dataset &&
-    (dataset.totalRows >= LARGE_ROW_COUNT || (dataset.fileSizeBytes ?? 0) >= LARGE_CSV_BYTES)
+    (dataset.totalRows >= LARGE_ROW_COUNT ||
+      (dataset.fileSizeBytes ?? 0) >= LARGE_CSV_BYTES)
       ? "Archivo grande detectado. La carga inicial, la búsqueda o el mezclado pueden tardar un poco."
       : null;
   const statusText = isGenerating
     ? "Procesando archivo..."
     : isShuffling
-      ? "Revolviendo filas..."
-      : isFiltering
-        ? "Aplicando búsqueda..."
-        : null;
+    ? "Revolviendo filas..."
+    : isFiltering
+    ? "Aplicando búsqueda..."
+    : null;
   const searchPlaceholder = csvFile
     ? "Buscar por ID, nombre o código"
     : "Carga un CSV para habilitar la búsqueda";
   const shuffleSummary = displayOrder
-    ? `Filas revolvidas ${formatNumber(shuffleCount)} ${shuffleCount === 1 ? "vez" : "veces"}`
+    ? `Filas revolvidas ${formatNumber(shuffleCount)} ${
+        shuffleCount === 1 ? "vez" : "veces"
+      }`
     : "Orden original cargado";
 
   const getDisplayRow = useCallback(
@@ -314,8 +330,8 @@ function App() {
       const logicalIndex = filterResult.matchingIndexes
         ? filterResult.matchingIndexes[displayIndex]!
         : displayOrder
-          ? displayOrder[displayIndex]!
-          : displayIndex;
+        ? displayOrder[displayIndex]!
+        : displayIndex;
 
       return dataset.getRow(logicalIndex);
     },
@@ -324,22 +340,6 @@ function App() {
 
   return (
     <main className="shell">
-      <section className="hero panel">
-        <div className="hero-copy">
-          <p className="eyebrow">Prueba final</p>
-          <h1>CSV final con ID, nombre y código.</h1>
-          <p className="hero-text">
-            La vista quedó enfocada en la certificación: se carga un CSV, se muestra el ID original
-            como primera columna y luego solo nombre y código.
-          </p>
-        </div>
-        <div className="hero-notes">
-          <p>1. Carga el archivo CSV final desde tu equipo.</p>
-          <p>2. Revuelve las filas cuantas veces necesites sin perder el ID único.</p>
-          <p>3. Busca por ID, nombre o código y valida el orden resultante.</p>
-        </div>
-      </section>
-
       <section className="setup-grid setup-grid-single">
         <article className="panel setup-card is-active">
           <div className="setup-header">
@@ -347,12 +347,15 @@ function App() {
               <p className="section-kicker">Carga única</p>
               <h2>Subir archivo CSV</h2>
             </div>
-            <span className="badge">{csvFile ? "Archivo listo" : "Pendiente"}</span>
+            <span className="badge">
+              {csvFile ? "Archivo listo" : "Pendiente"}
+            </span>
           </div>
 
           <p className="setup-copy">
-            La tabla final conserva la columna <code>ID</code> para evidenciar el desorden y
-            recorta la vista a <code>Nombre</code> y <code>Código</code>.
+            La tabla final conserva la columna <code>ID</code> para evidenciar
+            el desorden y recorta la vista a <code>Nombre</code> y{" "}
+            <code>Código</code>.
           </p>
 
           <div
@@ -401,8 +404,9 @@ function App() {
 
           <div className="setup-footer">
             <p className="setup-hint">
-              Cabecera esperada: <code>Nombre_Completo,Codigo_Usuario</code>. Si el archivo usa
-              otros nombres, se tomarán las dos columnas más cercanas a nombre y código.
+              Cabecera esperada: <code>Nombre_Completo,Codigo_Usuario</code>. Si
+              el archivo usa otros nombres, se tomarán las dos columnas más
+              cercanas a nombre y código.
             </p>
             {csvFile && (
               <button
@@ -429,19 +433,7 @@ function App() {
 
       <section className="panel list-panel">
         <div className="list-header">
-          <div className="search-field">
-            <label htmlFor="search">Buscar dentro de la lista</label>
-            <input
-              id="search"
-              value={query}
-              onChange={(event) => {
-                setQuery(event.target.value);
-              }}
-              placeholder={searchPlaceholder}
-              spellCheck={false}
-              disabled={!dataset || isGenerating || isShuffling}
-            />
-          </div>
+          <div></div>
 
           <div className="list-actions">
             <p className="list-proof-note">
@@ -453,16 +445,29 @@ function App() {
               type="button"
               className="secondary-button shuffle-button"
               onClick={handleShuffleRows}
-              disabled={!dataset || dataset.totalRows === 0 || isGenerating || isShuffling}
+              disabled={
+                !dataset ||
+                dataset.totalRows === 0 ||
+                isGenerating ||
+                isShuffling
+              }
             >
-              {isShuffling ? "Revolviendo..." : shuffleCount > 0 ? "Revolver otra vez" : "Revolver filas"}
+              {isShuffling
+                ? "Chocolateando..."
+                : shuffleCount > 0
+                ? "Chocolatear otra vez"
+                : "Chocolatear filas"}
             </button>
           </div>
         </div>
 
         {!dataset ? (
           <div className="empty-state">
-            <p>{isGenerating ? "Preparando datos..." : "Carga un CSV para comenzar."}</p>
+            <p>
+              {isGenerating
+                ? "Preparando datos..."
+                : "Carga un CSV para comenzar."}
+            </p>
             <small>
               {isGenerating
                 ? "Esto suele tardar solo unos instantes."
@@ -488,8 +493,9 @@ function App() {
 
       <section className="panel footer-note">
         <p>
-          La prueba final quedó reducida al flujo real: cargar CSV, revolver filas las veces que
-          quieran y validar el resultado manteniendo el ID original a la vista.
+          La prueba final quedó reducida al flujo real: cargar CSV, revolver
+          filas las veces que quieran y validar el resultado manteniendo el ID
+          original a la vista.
         </p>
       </section>
     </main>
