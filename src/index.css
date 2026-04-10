@@ -142,6 +142,23 @@ code {
   padding: 1.2rem 0 2.25rem;
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(27, 7, 45, 0.5);
+  backdrop-filter: blur(6px);
+}
+
+.modal-card {
+  width: min(920px, 100%);
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+}
+
 .panel {
   position: relative;
   overflow: hidden;
@@ -284,6 +301,16 @@ code {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.modal-close-button {
+  padding-inline: 0.9rem;
 }
 
 .setup-header h2 {
@@ -455,16 +482,43 @@ code {
 
 .list-header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
-  align-items: end;
+  align-items: stretch;
   margin-bottom: 1rem;
 }
 
+.list-action-card,
 .search-field {
   display: grid;
-  gap: 0.48rem;
+  gap: 0.7rem;
   min-width: 0;
+}
+
+.list-action-card {
+  grid-template-rows: auto minmax(3.8rem, auto) auto;
+  align-content: start;
+  padding: 1rem;
+  border: 1px solid rgba(108, 18, 151, 0.1);
+  border-radius: 22px;
+  background: rgba(249, 244, 255, 0.82);
+}
+
+.list-action-title {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #7a1fb8;
+}
+
+.list-action-copy,
+.list-proof-note {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  line-height: 1.45;
 }
 
 .search-field label {
@@ -481,14 +535,23 @@ code {
   justify-items: stretch;
 }
 
-.list-proof-note {
-  margin: 0;
-  color: var(--ink-soft);
-  font-size: 0.92rem;
+.action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
 }
 
+.list-header-button,
+.modal-trigger-button,
 .shuffle-button {
   width: 100%;
+}
+
+.list-header-button {
+  min-height: 60px;
+  padding: 0.95rem 1.1rem;
+  border-radius: 18px;
+  font-size: 1rem;
+  font-weight: 800;
 }
 
 .virtual-list-shell {
@@ -665,8 +728,17 @@ code {
     flex-direction: column;
   }
 
+  .modal-header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
   .setup-header {
     flex-direction: column;
+  }
+
+  .action-row {
+    grid-template-columns: 1fr;
   }
 
   .dropzone {

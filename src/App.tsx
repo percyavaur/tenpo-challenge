@@ -69,6 +69,7 @@ function buildShuffleSeed(totalRows: number, shuffleCount: number): number {
 
 function App() {
   const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const [dataset, setDataset] = useState<DatasetState | null>(null);
@@ -198,6 +199,24 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!isCsvModalOpen) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsCsvModalOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isCsvModalOpen]);
+
   const clearCsvSelection = useCallback(() => {
     shuffleControllerRef.current?.abort();
     shuffleControllerRef.current = null;
@@ -230,6 +249,7 @@ function App() {
     setCsvFile(file);
     setQuery("");
     setErrorMessage(null);
+    setIsCsvModalOpen(false);
   }, []);
 
   const handleCsvDrop = useCallback(
@@ -309,9 +329,6 @@ function App() {
     : isFiltering
     ? "Aplicando búsqueda..."
     : null;
-  const searchPlaceholder = csvFile
-    ? "Buscar por ID, nombre o código"
-    : "Carga un CSV para habilitar la búsqueda";
   const shuffleSummary = displayOrder
     ? `Filas revolvidas ${formatNumber(shuffleCount)} ${
         shuffleCount === 1 ? "vez" : "veces"
@@ -340,89 +357,121 @@ function App() {
 
   return (
     <main className="shell">
-      <section className="setup-grid setup-grid-single">
-        <article className="panel setup-card is-active">
-          <div className="setup-header">
-            <div>
-              <p className="section-kicker">Carga única</p>
-              <h2>Subir archivo CSV</h2>
-            </div>
-            <span className="badge">
-              {csvFile ? "Archivo listo" : "Pendiente"}
-            </span>
-          </div>
+      <input
+        ref={csvInputRef}
+        hidden
+        type="file"
+        accept=".csv,text/csv"
+        onChange={(event) => {
+          handleCsvSelection(event.target.files?.[0] ?? null);
+        }}
+      />
 
-          <p className="setup-copy">
-            La tabla final conserva la columna <code>ID</code> para evidenciar
-            el desorden y recorta la vista a <code>Nombre</code> y{" "}
-            <code>Código</code>.
-          </p>
-
-          <div
-            className={`dropzone${isDraggingCsv ? " is-dragging" : ""}`}
-            onClick={() => {
-              if (csvInputRef.current) {
-                csvInputRef.current.value = "";
-                csvInputRef.current.click();
-              }
+      {isCsvModalOpen && (
+        <div
+          className="modal-backdrop"
+          onClick={() => {
+            setIsCsvModalOpen(false);
+            setIsDraggingCsv(false);
+          }}
+        >
+          <section
+            className="panel modal-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="csv-modal-title"
+            onClick={(event) => {
+              event.stopPropagation();
             }}
-            onDragOver={(event) => {
-              event.preventDefault();
-              event.dataTransfer.dropEffect = "copy";
-              setIsDraggingCsv(true);
-            }}
-            onDragLeave={() => {
-              setIsDraggingCsv(false);
-            }}
-            onDrop={handleCsvDrop}
           >
-            <p className="dropzone-title">
-              {csvFile ? "Archivo listo para validar" : "Arrastra tu CSV aquí"}
-            </p>
-            <p className="dropzone-copy">o selecciónalo desde tu equipo</p>
-            <button type="button" className="secondary-button">
-              {csvFile ? "Reemplazar archivo" : "Seleccionar archivo"}
-            </button>
-
-            {csvFile && (
-              <div className="dropzone-file">
-                <strong>{csvFile.name}</strong>
-                <span>{formatBytes(csvFile.size)}</span>
+            <article className="setup-card is-active">
+              <div className="setup-header">
+                <div>
+                  <p className="section-kicker">Carga única</p>
+                  <h2 id="csv-modal-title">Subir archivo CSV</h2>
+                </div>
+                <div className="modal-header-actions">
+                  <span className="badge">
+                    {csvFile ? "Archivo listo" : "Pendiente"}
+                  </span>
+                  <button
+                    type="button"
+                    className="secondary-button modal-close-button"
+                    onClick={() => {
+                      setIsCsvModalOpen(false);
+                      setIsDraggingCsv(false);
+                    }}
+                  >
+                    Cerrar
+                  </button>
+                </div>
               </div>
-            )}
-          </div>
 
-          <input
-            ref={csvInputRef}
-            hidden
-            type="file"
-            accept=".csv,text/csv"
-            onChange={(event) => {
-              handleCsvSelection(event.target.files?.[0] ?? null);
-            }}
-          />
+              <p className="setup-copy">
+                La tabla final conserva la columna <code>ID</code> para
+                evidenciar el desorden y recorta la vista a <code>Nombre</code>{" "}
+                y <code>Código</code>.
+              </p>
 
-          <div className="setup-footer">
-            <p className="setup-hint">
-              Cabecera esperada: <code>Nombre_Completo,Codigo_Usuario</code>. Si
-              el archivo usa otros nombres, se tomarán las dos columnas más
-              cercanas a nombre y código.
-            </p>
-            {csvFile && (
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  clearCsvSelection();
+              <div
+                className={`dropzone${isDraggingCsv ? " is-dragging" : ""}`}
+                onClick={() => {
+                  if (csvInputRef.current) {
+                    csvInputRef.current.value = "";
+                    csvInputRef.current.click();
+                  }
                 }}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = "copy";
+                  setIsDraggingCsv(true);
+                }}
+                onDragLeave={() => {
+                  setIsDraggingCsv(false);
+                }}
+                onDrop={handleCsvDrop}
               >
-                Quitar archivo
-              </button>
-            )}
-          </div>
-        </article>
-      </section>
+                <p className="dropzone-title">
+                  {csvFile
+                    ? "Archivo listo para validar"
+                    : "Arrastra tu CSV aquí"}
+                </p>
+                <p className="dropzone-copy">o selecciónalo desde tu equipo</p>
+                <button type="button" className="secondary-button">
+                  {csvFile ? "Reemplazar archivo" : "Seleccionar archivo"}
+                </button>
+
+                {csvFile && (
+                  <div className="dropzone-file">
+                    <strong>{csvFile.name}</strong>
+                    <span>{formatBytes(csvFile.size)}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="setup-footer">
+                <p className="setup-hint">
+                  Cabecera esperada: <code>Nombre_Completo,Codigo_Usuario</code>
+                  . Si el archivo usa otros nombres, se tomarán las dos columnas
+                  más cercanas a nombre y código.
+                </p>
+                {csvFile && (
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      clearCsvSelection();
+                    }}
+                  >
+                    Quitar archivo
+                  </button>
+                )}
+              </div>
+            </article>
+          </section>
+        </div>
+      )}
 
       {(activeWarning || errorMessage) && (
         <section className="panel alert-panel">
@@ -433,31 +482,50 @@ function App() {
 
       <section className="panel list-panel">
         <div className="list-header">
-          <div></div>
+          <div className="list-action-card">
+            <p className="list-action-title">Cargar lista de participantes</p>
+            <p className="list-action-copy">
+              {csvFile
+                ? `${csvFile.name} listo para validar.`
+                : "Abre el modal para cargar o reemplazar el archivo CSV base."}
+            </p>
+            <button
+              type="button"
+              className="secondary-button list-header-button"
+              onClick={() => {
+                setIsCsvModalOpen(true);
+              }}
+            >
+              {csvFile ? "Cambiar CSV" : "Cargar CSV"}
+            </button>
+          </div>
 
-          <div className="list-actions">
+          <div className="list-actions list-action-card">
+            <p className="list-action-title">Mezclar filas</p>
             <p className="list-proof-note">
               {dataset
                 ? `ID original visible para auditoría. ${shuffleSummary}.`
                 : "Carga un CSV para habilitar el mezclado de filas."}
             </p>
-            <button
-              type="button"
-              className="secondary-button shuffle-button"
-              onClick={handleShuffleRows}
-              disabled={
-                !dataset ||
-                dataset.totalRows === 0 ||
-                isGenerating ||
-                isShuffling
-              }
-            >
-              {isShuffling
-                ? "Chocolateando..."
-                : shuffleCount > 0
-                ? "Chocolatear otra vez"
-                : "Chocolatear filas"}
-            </button>
+            <div className="action-row">
+              <button
+                type="button"
+                className="secondary-button list-header-button shuffle-button"
+                onClick={handleShuffleRows}
+                disabled={
+                  !dataset ||
+                  dataset.totalRows === 0 ||
+                  isGenerating ||
+                  isShuffling
+                }
+              >
+                {isShuffling
+                  ? "Chocolateando..."
+                  : shuffleCount > 0
+                  ? "Chocolatear otra vez"
+                  : "Chocolatear filas"}
+              </button>
+            </div>
           </div>
         </div>
 
