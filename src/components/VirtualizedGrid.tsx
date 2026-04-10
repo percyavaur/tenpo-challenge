@@ -128,9 +128,11 @@ const RowView = memo(function RowView({
         transform: `translateY(${top}px)`,
       }}
     >
-      <div className="cell id-cell">{row.id}</div>
+      <div className="cell id-cell" title={row.id.toString()}>
+        {row.id}
+      </div>
       {row.cells.map((cell, cellIndex) => (
-        <div key={cellIndex} className="cell">
+        <div key={cellIndex} className="cell" title={cell}>
           {cell}
         </div>
       ))}
@@ -149,7 +151,10 @@ export function VirtualizedGrid({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const onVisibleRangeChangeRef = useRef(onVisibleRangeChange);
   const totalLogicalHeight = rowCount * rowHeight;
-  const columnTemplate = `110px repeat(${Math.max(columns.length, 1)}, minmax(0, 1fr))`;
+  const columnTemplate =
+    columns.length === 2
+      ? "84px minmax(0, 1.6fr) minmax(0, 1fr)"
+      : `110px repeat(${Math.max(columns.length, 1)}, minmax(0, 1fr))`;
 
   useEffect(() => {
     onVisibleRangeChangeRef.current = onVisibleRangeChange;
@@ -208,7 +213,9 @@ export function VirtualizedGrid({
       <div className="grid-header" style={{ gridTemplateColumns: columnTemplate }}>
         <span>ID</span>
         {columns.map((column) => (
-          <span key={column}>{column}</span>
+          <span key={column} title={column}>
+            {column}
+          </span>
         ))}
       </div>
 

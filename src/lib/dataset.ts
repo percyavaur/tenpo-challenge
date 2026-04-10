@@ -1,4 +1,4 @@
-export type DatasetSize = 100_000 | 500_000 | 1_000_000 | 2_000_000;
+export type DatasetSize = number;
 export type DatasetStrategy = "materialized" | "lazy";
 export type DatasetSource = "synthetic" | "csv";
 
@@ -92,12 +92,14 @@ const MATERIALIZE_CHUNK_SIZE = 20_000;
 const FILTER_CHUNK_SIZE = 40_000;
 const CSV_SCAN_CHUNK_BYTES = 4_000_000;
 const CSV_ROW_CACHE_LIMIT = 1_024;
+const SHUFFLE_CHUNK_SIZE = 50_000;
 const STRING_HEADER_BYTES = 24;
 const OBJECT_OVERHEAD_BYTES = 72;
 const ARRAY_OVERHEAD_BYTES = 24;
 const REFERENCE_BYTES = 8;
 const QUOTE_BYTE = 34;
 const LF_BYTE = 10;
+const FINAL_VIEW_COLUMNS = ["Nombre", "Código"] as const;
 
 function throwIfAborted(signal?: AbortSignal): void {
   if (signal?.aborted) {
@@ -212,6 +214,45 @@ function parseCsvRecord(recordText: string): string[] {
   return values;
 }
 
+function normalizeHeader(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function pickCsvColumnIndexes(rawColumns: string[]): number[] {
+  const normalizedColumns = rawColumns.map(normalizeHeader);
+  const selectedIndexes: number[] = [];
+
+  const tryAddIndex = (index: number) => {
+    if (index < 0 || selectedIndexes.includes(index)) {
+      return;
+    }
+
+    selectedIndexes.push(index);
+  };
+
+  tryAddIndex(
+    normalizedColumns.findIndex((column) => column.includes("nombre") || column.includes("name"))
+  );
+  tryAddIndex(
+    normalizedColumns.findIndex(
+      (column) =>
+        column.includes("codigo") ||
+        column.includes("code") ||
+        (column.includes("cod") && !column.includes("nombre"))
+    )
+  );
+
+  for (let index = 0; index < rawColumns.length && selectedIndexes.length < FINAL_VIEW_COLUMNS.length; index += 1) {
+    tryAddIndex(index);
+  }
+
+  return selectedIndexes.slice(0, FINAL_VIEW_COLUMNS.length);
+}
+
 function rowMatchesQuery(row: RowData, normalizedQuery: string): boolean {
   if (!normalizedQuery) {
     return true;
@@ -222,6 +263,17 @@ function rowMatchesQuery(row: RowData, normalizedQuery: string): boolean {
   }
 
   return row.cells.some((cell) => cell.toLowerCase().includes(normalizedQuery));
+}
+
+function createSeededRandom(seed: number): () => number {
+  let state = mix(seed || 1);
+
+  return () => {
+    state = (state + 0x6d2b79f5) | 0;
+    let value = Math.imul(state ^ (state >>> 15), 1 | state);
+    value ^= value + Math.imul(value ^ (value >>> 7), 61 | value);
+    return ((value ^ (value >>> 14)) >>> 0) / 4_294_967_296;
+  };
 }
 
 function buildSegment(index: number): string {
@@ -476,7 +528,8 @@ function createRowCache() {
 function buildCsvRowReader(
   bytes: Uint8Array,
   recordOffsets: Uint32Array,
-  columns: string[]
+  sourceColumnCount: number,
+  selectedColumnIndexes: number[]
 ): (index: number, useCache?: boolean) => RowData {
   const decoder = new TextDecoder("utf-8");
   const cache = createRowCache();
@@ -494,11 +547,11 @@ function buildCsvRowReader(
     const end = recordOffsets[index + 2]!;
     const parsedCells = normalizeRowCells(
       parseCsvRecord(decodeCsvRecord(bytes, start, end, decoder)),
-      columns.length
+      sourceColumnCount
     );
     const row = {
       id: index + 1,
-      cells: parsedCells,
+      cells: selectedColumnIndexes.map((columnIndex) => parsedCells[columnIndex] ?? ""),
     };
 
     if (useCache) {
@@ -515,6 +568,8 @@ async function loadCsvBase(
 ): Promise<{
   bytes: Uint8Array;
   columns: string[];
+  sourceColumnCount: number;
+  selectedColumnIndexes: number[];
   recordOffsets: Uint32Array;
   totalRows: number;
 }> {
@@ -530,15 +585,23 @@ async function loadCsvBase(
 
   const recordOffsets = await buildCsvRecordOffsets(bytes, recordCount, signal);
   const headerText = decodeCsvRecord(bytes, recordOffsets[0]!, recordOffsets[1]!, new TextDecoder("utf-8"));
-  const columns = parseCsvRecord(headerText);
+  const rawColumns = parseCsvRecord(headerText);
 
-  if (columns.length === 0 || columns.every((column) => column.trim() === "")) {
+  if (rawColumns.length === 0 || rawColumns.every((column) => column.trim() === "")) {
     throw new Error("No se pudo leer la cabecera del CSV.");
   }
 
+  if (rawColumns.length < FINAL_VIEW_COLUMNS.length) {
+    throw new Error("El CSV debe incluir al menos las columnas de nombre y código.");
+  }
+
+  const selectedColumnIndexes = pickCsvColumnIndexes(rawColumns);
+
   return {
     bytes,
-    columns,
+    columns: [...FINAL_VIEW_COLUMNS],
+    sourceColumnCount: rawColumns.length,
+    selectedColumnIndexes,
     recordOffsets,
     totalRows: Math.max(recordCount - 1, 0),
   };
@@ -549,8 +612,9 @@ async function createCsvIndexedDataset(
   signal?: AbortSignal
 ): Promise<CsvIndexedDataset> {
   const startedAt = performance.now();
-  const { bytes, columns, recordOffsets, totalRows } = await loadCsvBase(file, signal);
-  const readRowAt = buildCsvRowReader(bytes, recordOffsets, columns);
+  const { bytes, columns, sourceColumnCount, selectedColumnIndexes, recordOffsets, totalRows } =
+    await loadCsvBase(file, signal);
+  const readRowAt = buildCsvRowReader(bytes, recordOffsets, sourceColumnCount, selectedColumnIndexes);
 
   return {
     source: "csv",
@@ -583,8 +647,9 @@ async function createCsvMaterializedDataset(
   signal?: AbortSignal
 ): Promise<CsvMaterializedDataset> {
   const startedAt = performance.now();
-  const { bytes, columns, recordOffsets, totalRows } = await loadCsvBase(file, signal);
-  const readRowAt = buildCsvRowReader(bytes, recordOffsets, columns);
+  const { bytes, columns, sourceColumnCount, selectedColumnIndexes, recordOffsets, totalRows } =
+    await loadCsvBase(file, signal);
+  const readRowAt = buildCsvRowReader(bytes, recordOffsets, sourceColumnCount, selectedColumnIndexes);
   const rows = new Array<RowData>(totalRows);
 
   for (let index = 0; index < totalRows; index += MATERIALIZE_CHUNK_SIZE) {
@@ -645,9 +710,41 @@ export async function initializeDataset(
   return createCsvIndexedDataset(options.file, signal);
 }
 
+export async function createShuffledIndexOrder(
+  totalRows: number,
+  seed: number,
+  signal?: AbortSignal
+): Promise<Uint32Array> {
+  const order = new Uint32Array(totalRows);
+
+  for (let index = 0; index < totalRows; index += 1) {
+    order[index] = index;
+
+    if (index > 0 && index % SHUFFLE_CHUNK_SIZE === 0) {
+      await yieldToMainThread(signal);
+    }
+  }
+
+  const random = createSeededRandom(seed);
+
+  for (let index = totalRows - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(random() * (index + 1));
+    const current = order[index]!;
+    order[index] = order[swapIndex]!;
+    order[swapIndex] = current;
+
+    if (index % SHUFFLE_CHUNK_SIZE === 0) {
+      await yieldToMainThread(signal);
+    }
+  }
+
+  return order;
+}
+
 async function filterMaterializedDataset(
   dataset: MaterializedDataset,
   normalizedQuery: string,
+  displayOrder?: Uint32Array | null,
   signal?: AbortSignal
 ): Promise<FilterResult> {
   const startedAt = performance.now();
@@ -664,39 +761,43 @@ async function filterMaterializedDataset(
     };
   }
 
-  const matches: RowData[] = [];
+  const matchingIndexes: number[] = [];
+  const orderedIndexes = displayOrder ?? null;
+  const totalIndexes = orderedIndexes?.length ?? dataset.rows.length;
 
-  for (let index = 0; index < dataset.rows.length; index += FILTER_CHUNK_SIZE) {
-    const end = Math.min(index + FILTER_CHUNK_SIZE, dataset.rows.length);
+  for (let index = 0; index < totalIndexes; index += FILTER_CHUNK_SIZE) {
+    const end = Math.min(index + FILTER_CHUNK_SIZE, totalIndexes);
 
     for (let cursor = index; cursor < end; cursor += 1) {
-      const row = dataset.rows[cursor]!;
+      const logicalIndex = orderedIndexes ? orderedIndexes[cursor]! : cursor;
+      const row = dataset.getRow(logicalIndex);
 
       if (rowMatchesQuery(row, normalizedQuery)) {
-        matches.push(row);
+        matchingIndexes.push(logicalIndex);
       }
     }
 
-    if (end < dataset.rows.length) {
+    if (end < totalIndexes) {
       await yieldToMainThread(signal);
     }
   }
 
   return {
-    filteredCount: matches.length,
+    filteredCount: matchingIndexes.length,
     filterMs: performance.now() - startedAt,
-    filteredRows: matches,
-    matchingIndexes: null,
-    cachedEntries: matches.length,
-    cacheBytes: matches.length * REFERENCE_BYTES,
+    filteredRows: null,
+    matchingIndexes,
+    cachedEntries: matchingIndexes.length,
+    cacheBytes: matchingIndexes.length * REFERENCE_BYTES,
     description:
-      "El filtro materializado opera sobre filas ya parseadas y conserva un arreglo adicional de referencias al resultado.",
+      "El filtro materializado opera sobre filas ya parseadas y conserva los índices visibles del resultado actual.",
   };
 }
 
 async function filterSyntheticLazyDataset(
   dataset: SyntheticLazyDataset,
   normalizedQuery: string,
+  displayOrder?: Uint32Array | null,
   signal?: AbortSignal
 ): Promise<FilterResult> {
   const startedAt = performance.now();
@@ -715,19 +816,22 @@ async function filterSyntheticLazyDataset(
   }
 
   const matchingIndexes: number[] = [];
+  const orderedIndexes = displayOrder ?? null;
+  const totalIndexes = orderedIndexes?.length ?? dataset.totalRows;
 
-  for (let index = 0; index < dataset.totalRows; index += FILTER_CHUNK_SIZE) {
-    const end = Math.min(index + FILTER_CHUNK_SIZE, dataset.totalRows);
+  for (let index = 0; index < totalIndexes; index += FILTER_CHUNK_SIZE) {
+    const end = Math.min(index + FILTER_CHUNK_SIZE, totalIndexes);
 
     for (let cursor = index; cursor < end; cursor += 1) {
-      const row = dataset.getRow(cursor);
+      const logicalIndex = orderedIndexes ? orderedIndexes[cursor]! : cursor;
+      const row = dataset.getRow(logicalIndex);
 
       if (rowMatchesQuery(row, normalizedQuery)) {
-        matchingIndexes.push(cursor);
+        matchingIndexes.push(logicalIndex);
       }
     }
 
-    if (end < dataset.totalRows) {
+    if (end < totalIndexes) {
       await yieldToMainThread(signal);
     }
   }
@@ -747,6 +851,7 @@ async function filterSyntheticLazyDataset(
 async function filterCsvIndexedDataset(
   dataset: CsvIndexedDataset,
   normalizedQuery: string,
+  displayOrder?: Uint32Array | null,
   signal?: AbortSignal
 ): Promise<FilterResult> {
   const startedAt = performance.now();
@@ -765,19 +870,22 @@ async function filterCsvIndexedDataset(
   }
 
   const matchingIndexes: number[] = [];
+  const orderedIndexes = displayOrder ?? null;
+  const totalIndexes = orderedIndexes?.length ?? dataset.totalRows;
 
-  for (let index = 0; index < dataset.totalRows; index += FILTER_CHUNK_SIZE) {
-    const end = Math.min(index + FILTER_CHUNK_SIZE, dataset.totalRows);
+  for (let index = 0; index < totalIndexes; index += FILTER_CHUNK_SIZE) {
+    const end = Math.min(index + FILTER_CHUNK_SIZE, totalIndexes);
 
     for (let cursor = index; cursor < end; cursor += 1) {
-      const row = dataset.readRowAt(cursor, false);
+      const logicalIndex = orderedIndexes ? orderedIndexes[cursor]! : cursor;
+      const row = dataset.readRowAt(logicalIndex, false);
 
       if (rowMatchesQuery(row, normalizedQuery)) {
-        matchingIndexes.push(cursor);
+        matchingIndexes.push(logicalIndex);
       }
     }
 
-    if (end < dataset.totalRows) {
+    if (end < totalIndexes) {
       await yieldToMainThread(signal);
     }
   }
@@ -797,17 +905,18 @@ async function filterCsvIndexedDataset(
 export async function runFilter(
   dataset: DatasetState,
   rawQuery: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  displayOrder?: Uint32Array | null
 ): Promise<FilterResult> {
   const normalizedQuery = rawQuery.trim().toLowerCase();
 
   if (dataset.strategy === "materialized") {
-    return filterMaterializedDataset(dataset, normalizedQuery, signal);
+    return filterMaterializedDataset(dataset, normalizedQuery, displayOrder, signal);
   }
 
   if (dataset.source === "csv") {
-    return filterCsvIndexedDataset(dataset, normalizedQuery, signal);
+    return filterCsvIndexedDataset(dataset, normalizedQuery, displayOrder, signal);
   }
 
-  return filterSyntheticLazyDataset(dataset, normalizedQuery, signal);
+  return filterSyntheticLazyDataset(dataset, normalizedQuery, displayOrder, signal);
 }
