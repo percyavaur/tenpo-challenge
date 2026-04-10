@@ -558,14 +558,6 @@ function App() {
           />
         )}
       </section>
-
-      <section className="panel footer-note">
-        <p>
-          La prueba final quedó reducida al flujo real: cargar CSV, revolver
-          filas las veces que quieran y validar el resultado manteniendo el ID
-          original a la vista.
-        </p>
-      </section>
     </main>
   );
 }
