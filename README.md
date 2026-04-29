@@ -10,6 +10,7 @@ POC en React + Vite para explorar archivos CSV masivos sin renderizar millones d
 - Filtro separado del flujo de lectura/render
 - Shuffle separado del flujo de lectura/render
 - Semilla configurable para reproducir mezclas
+- Descarga automática del CSV original comprimido al completar el último shuffle
 - Métricas básicas de carga, filtrado y memoria estimada
 
 ## Estructura relevante
@@ -23,6 +24,7 @@ src/
 │   └── useShuffleOrder.ts
 ├── lib/
 │   ├── async.ts
+│   ├── compressedCsvDownload.ts
 │   ├── dataset.ts
 │   ├── filter.ts
 │   └── shuffle.ts

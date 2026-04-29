@@ -9,6 +9,7 @@ import {
 } from "react";
 import { VirtualizedGrid } from "./components/VirtualizedGrid";
 import { useShuffleOrder } from "./hooks/useShuffleOrder";
+import { downloadCompressedCsv } from "./lib/compressedCsvDownload";
 import { runFilter, type FilterResult } from "./lib/filter";
 import {
   initializeDataset,
@@ -20,6 +21,7 @@ const CSV_SAMPLE_COLUMNS = ["Nombre", "Código"];
 const ROW_HEIGHT = 16;
 const LARGE_CSV_BYTES = 25_000_000;
 const LARGE_ROW_COUNT = 1_000_000;
+const REQUIRED_SHUFFLES = 3;
 
 const numberFormatter = new Intl.NumberFormat("es-PE");
 
@@ -108,10 +110,25 @@ function App() {
   const handleShuffleStart = useCallback(() => {
     setErrorMessage(null);
   }, []);
-  const handleShuffleComplete = useCallback(() => {
+  const handleShuffleComplete = useCallback((completedShuffleCount: number) => {
     setWinnerRow(null);
     setIsWinnerOverlayOpen(false);
-  }, []);
+
+    if (completedShuffleCount !== REQUIRED_SHUFFLES || !dataset) {
+      return;
+    }
+
+    downloadCompressedCsv({
+      fileName: dataset.fileName,
+      rawBytes: dataset.rawBytes,
+    }).catch((error: unknown) => {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "No se pudo comprimir y descargar el CSV original."
+      );
+    });
+  }, [dataset]);
   const { displayOrder, shuffleCount, isShuffling, resetShuffle, shuffleRows } =
     useShuffleOrder({
       isAbortError,
@@ -337,11 +354,11 @@ function App() {
   const canChooseWinner =
     Boolean(dataset) &&
     filteredCount > 0 &&
-    shuffleCount >= 3 &&
+    shuffleCount >= REQUIRED_SHUFFLES &&
     !isGenerating &&
     !isFiltering &&
     !isShuffling;
-  const isWinnerMode = shuffleCount >= 3;
+  const isWinnerMode = shuffleCount >= REQUIRED_SHUFFLES;
 
   const getDisplayRow = useCallback(
     (displayIndex: number): RowData => {

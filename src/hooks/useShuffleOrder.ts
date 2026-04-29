@@ -3,7 +3,7 @@ import { buildShuffleSeed, createShuffledIndexOrder } from "../lib/shuffle";
 
 interface UseShuffleOrderOptions {
   isAbortError: (error: unknown) => boolean;
-  onComplete: () => void;
+  onComplete: (shuffleCount: number) => void;
   onError: (message: string) => void;
   onStart: () => void;
 }
@@ -60,8 +60,8 @@ export function useShuffleOrder({
           startTransition(() => {
             setDisplayOrder(nextOrder);
             setShuffleCount(nextShuffleCount);
-            onComplete();
           });
+          onComplete(nextShuffleCount);
         })
         .catch((error: unknown) => {
           if (isAbortError(error)) {
