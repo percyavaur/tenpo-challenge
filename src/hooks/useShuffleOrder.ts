@@ -34,7 +34,7 @@ export function useShuffleOrder({
   }, []);
 
   const shuffleRows = useCallback(
-    (totalRows: number) => {
+    (totalRows: number, userSeed: number) => {
       if (totalRows === 0 || isShuffling) {
         return;
       }
@@ -49,7 +49,7 @@ export function useShuffleOrder({
 
       createShuffledIndexOrder(
         totalRows,
-        buildShuffleSeed(totalRows, nextShuffleCount),
+        buildShuffleSeed(totalRows, nextShuffleCount, userSeed),
         controller.signal
       )
         .then((nextOrder) => {

@@ -626,7 +626,7 @@ code {
 }
 
 .list-action-card {
-  grid-template-rows: auto minmax(3.8rem, auto) auto;
+  grid-template-rows: auto minmax(3.8rem, auto) auto auto;
   align-content: start;
   padding: 1rem;
   border: 1px solid rgba(108, 18, 151, 0.1);
@@ -657,6 +657,27 @@ code {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--ink-soft);
+}
+
+.seed-field {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.seed-field span {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.seed-field input {
+  min-height: 44px;
+  padding: 0.68rem 0.78rem;
+  border-radius: 12px;
+  font-weight: 800;
 }
 
 .list-actions {

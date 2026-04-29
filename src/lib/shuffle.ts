@@ -22,9 +22,14 @@ function createSeededRandom(seed: number): () => number {
   };
 }
 
-export function buildShuffleSeed(totalRows: number, shuffleCount: number): number {
+export function buildShuffleSeed(
+  totalRows: number,
+  shuffleCount: number,
+  userSeed: number
+): number {
   return (
-    (Math.imul(totalRows + 1, 0x9e3779b1) ^
+    (Math.imul((userSeed >>> 0) + 1, 0xc2b2ae35) ^
+      Math.imul(totalRows + 1, 0x9e3779b1) ^
       Math.imul(shuffleCount + 1, 0x85ebca6b)) >>>
     0
   );

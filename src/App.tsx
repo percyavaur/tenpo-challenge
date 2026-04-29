@@ -20,6 +20,7 @@ const CSV_SAMPLE_COLUMNS = ["Nombre", "Código"];
 const ROW_HEIGHT = 16;
 const LARGE_CSV_BYTES = 25_000_000;
 const LARGE_ROW_COUNT = 1_000_000;
+const DEFAULT_SHUFFLE_SEED = "43";
 
 const numberFormatter = new Intl.NumberFormat("es-PE");
 
@@ -57,6 +58,22 @@ function isCsvFile(file: File): boolean {
   );
 }
 
+function parseShuffleSeed(value: string): number | null {
+  const trimmedValue = value.trim();
+
+  if (!/^\d+$/.test(trimmedValue)) {
+    return null;
+  }
+
+  const parsedValue = Number(trimmedValue);
+
+  if (!Number.isSafeInteger(parsedValue) || parsedValue > 0xffffffff) {
+    return null;
+  }
+
+  return parsedValue >>> 0;
+}
+
 function getWinnerName(row: RowData | null): string {
   if (!row) {
     return "Ganador pendiente";
@@ -80,6 +97,7 @@ function App() {
   const [winnerRow, setWinnerRow] = useState<RowData | null>(null);
   const [winnerIds, setWinnerIds] = useState<number[]>([]);
   const [query, setQuery] = useState("");
+  const [shuffleSeedInput, setShuffleSeedInput] = useState(DEFAULT_SHUFFLE_SEED);
   const deferredQuery = useDeferredValue(query);
   const [dataset, setDataset] = useState<DatasetState | null>(null);
   const [filterResult, setFilterResult] = useState<FilterResult | null>(null);
@@ -232,6 +250,7 @@ function App() {
     setWinnerIds([]);
     setIsWinnerOverlayOpen(false);
     setQuery("");
+    setShuffleSeedInput(DEFAULT_SHUFFLE_SEED);
     setErrorMessage(null);
 
     if (csvInputRef.current) {
@@ -271,14 +290,33 @@ function App() {
       return;
     }
 
-    shuffleRows(dataset.totalRows);
-  }, [dataset, isShuffling, shuffleRows]);
+    const shuffleSeed = parseShuffleSeed(shuffleSeedInput);
+
+    if (shuffleSeed === null) {
+      setErrorMessage("Ingresa una semilla numérica válida para mezclar.");
+      return;
+    }
+
+    shuffleRows(dataset.totalRows, shuffleSeed);
+  }, [dataset, isShuffling, shuffleRows, shuffleSeedInput]);
+
+  const handleShuffleSeedChange = useCallback(
+    (nextValue: string) => {
+      setShuffleSeedInput(nextValue);
+      resetShuffle();
+      setWinnerRow(null);
+      setWinnerIds([]);
+      setIsWinnerOverlayOpen(false);
+    },
+    [resetShuffle]
+  );
 
   const activeColumns = dataset?.columns ?? CSV_SAMPLE_COLUMNS;
   const filteredCount =
     filterResult?.filteredCount ??
     (dataset && deferredQuery.trim().length === 0 ? dataset.totalRows : 0);
   const isDatasetReady = Boolean(dataset && filterResult);
+  const isShuffleSeedValid = parseShuffleSeed(shuffleSeedInput) !== null;
   const activeWarning =
     dataset &&
     (dataset.totalRows >= LARGE_ROW_COUNT ||
@@ -584,9 +622,23 @@ function App() {
               {dataset
                 ? isWinnerMode
                   ? `Ya puedes elegir ganador. ${shuffleSummary}.`
-                  : `ID original visible para auditoría. ${shuffleSummary}.`
+                  : `ID original visible para auditoría. Semilla ${shuffleSeedInput || "pendiente"}. ${shuffleSummary}.`
                 : "Carga un CSV para habilitar el mezclado de filas."}
             </p>
+            <label className="seed-field">
+              <span>Semilla</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={shuffleSeedInput}
+                placeholder="43"
+                disabled={isGenerating || isShuffling}
+                onChange={(event) => {
+                  handleShuffleSeedChange(event.target.value);
+                }}
+              />
+            </label>
             <div className="action-row">
               <button
                 type="button"
@@ -600,7 +652,8 @@ function App() {
                     : !dataset ||
                       dataset.totalRows === 0 ||
                       isGenerating ||
-                      isShuffling
+                      isShuffling ||
+                      !isShuffleSeedValid
                 }
               >
                 {isWinnerMode

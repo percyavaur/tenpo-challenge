@@ -9,6 +9,7 @@ POC en React + Vite para explorar archivos CSV masivos sin renderizar millones d
 - Lectura indexada del CSV bajo demanda
 - Filtro separado del flujo de lectura/render
 - Shuffle separado del flujo de lectura/render
+- Semilla configurable para reproducir mezclas
 - Métricas básicas de carga, filtrado y memoria estimada
 
 ## Estructura relevante
