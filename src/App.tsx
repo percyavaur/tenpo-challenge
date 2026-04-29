@@ -104,6 +104,7 @@ function App() {
   const [filterResult, setFilterResult] = useState<FilterResult | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isFiltering, setIsFiltering] = useState(false);
+  const [isCompressingCsv, setIsCompressingCsv] = useState(false);
   const [isDraggingCsv, setIsDraggingCsv] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const csvInputRef = useRef<HTMLInputElement | null>(null);
@@ -118,16 +119,21 @@ function App() {
       return;
     }
 
+    setIsCompressingCsv(true);
     downloadCompressedCsv({
       fileName: dataset.fileName,
       rawBytes: dataset.rawBytes,
-    }).catch((error: unknown) => {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "No se pudo comprimir y descargar el CSV original."
-      );
-    });
+    })
+      .catch((error: unknown) => {
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "No se pudo comprimir y descargar el CSV original."
+        );
+      })
+      .finally(() => {
+        setIsCompressingCsv(false);
+      });
   }, [dataset]);
   const { displayOrder, shuffleCount, isShuffling, resetShuffle, shuffleRows } =
     useShuffleOrder({
@@ -265,6 +271,7 @@ function App() {
     setWinnerRow(null);
     setWinnerIds([]);
     setIsWinnerOverlayOpen(false);
+    setIsCompressingCsv(false);
     setQuery("");
     setShuffleSeedInput("");
     setErrorMessage(null);
@@ -357,7 +364,8 @@ function App() {
     shuffleCount >= REQUIRED_SHUFFLES &&
     !isGenerating &&
     !isFiltering &&
-    !isShuffling;
+    !isShuffling &&
+    !isCompressingCsv;
   const isWinnerMode = shuffleCount >= REQUIRED_SHUFFLES;
 
   const getDisplayRow = useCallback(
@@ -610,6 +618,13 @@ function App() {
         </section>
       )}
 
+      {isCompressingCsv && (
+        <div className="compression-toast" role="status" aria-live="polite">
+          <span className="compression-spinner" aria-hidden="true"></span>
+          <span>Comprimiendo CSV...</span>
+        </div>
+      )}
+
       <section className="panel list-panel">
         <div className="list-header">
           <div className="list-action-card">
@@ -649,7 +664,7 @@ function App() {
                 pattern="[0-9]*"
                 value={shuffleSeedInput}
                 placeholder="Ingresa una semilla"
-                disabled={isGenerating || isShuffling}
+                disabled={isGenerating || isShuffling || isCompressingCsv}
                 onChange={(event) => {
                   handleShuffleSeedChange(event.target.value);
                 }}
@@ -669,10 +684,13 @@ function App() {
                       dataset.totalRows === 0 ||
                       isGenerating ||
                       isShuffling ||
+                      isCompressingCsv ||
                       !isShuffleSeedValid
                 }
               >
-                {isWinnerMode
+                {isCompressingCsv
+                  ? "Comprimiendo..."
+                  : isWinnerMode
                   ? "Elegir ganador"
                   : isShuffling
                   ? "Chocolateando..."
