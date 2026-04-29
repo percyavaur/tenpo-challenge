@@ -20,7 +20,6 @@ const CSV_SAMPLE_COLUMNS = ["Nombre", "Código"];
 const ROW_HEIGHT = 16;
 const LARGE_CSV_BYTES = 25_000_000;
 const LARGE_ROW_COUNT = 1_000_000;
-const DEFAULT_SHUFFLE_SEED = "43";
 
 const numberFormatter = new Intl.NumberFormat("es-PE");
 
@@ -97,7 +96,7 @@ function App() {
   const [winnerRow, setWinnerRow] = useState<RowData | null>(null);
   const [winnerIds, setWinnerIds] = useState<number[]>([]);
   const [query, setQuery] = useState("");
-  const [shuffleSeedInput, setShuffleSeedInput] = useState(DEFAULT_SHUFFLE_SEED);
+  const [shuffleSeedInput, setShuffleSeedInput] = useState("");
   const deferredQuery = useDeferredValue(query);
   const [dataset, setDataset] = useState<DatasetState | null>(null);
   const [filterResult, setFilterResult] = useState<FilterResult | null>(null);
@@ -250,7 +249,7 @@ function App() {
     setWinnerIds([]);
     setIsWinnerOverlayOpen(false);
     setQuery("");
-    setShuffleSeedInput(DEFAULT_SHUFFLE_SEED);
+    setShuffleSeedInput("");
     setErrorMessage(null);
 
     if (csvInputRef.current) {
@@ -632,7 +631,7 @@ function App() {
                 inputMode="numeric"
                 pattern="[0-9]*"
                 value={shuffleSeedInput}
-                placeholder="43"
+                placeholder="Ingresa una semilla"
                 disabled={isGenerating || isShuffling}
                 onChange={(event) => {
                   handleShuffleSeedChange(event.target.value);
