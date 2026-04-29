@@ -1,13 +1,14 @@
 # Lista Virtualizada
 
-POC en React + Vite para explorar datasets masivos sin renderizar millones de nodos en el DOM.
+POC en React + Vite para explorar archivos CSV masivos sin renderizar millones de nodos en el DOM.
 
 ## Qué quedó en el proyecto
 
 - Lista virtualizada con `@tanstack/react-virtual`
-- Dataset sintético configurable
 - Carga local de archivos CSV
-- Comparación entre estrategia `lazy` y `materialized`
+- Lectura indexada del CSV bajo demanda
+- Filtro separado del flujo de lectura/render
+- Shuffle separado del flujo de lectura/render
 - Métricas básicas de carga, filtrado y memoria estimada
 
 ## Estructura relevante
@@ -17,8 +18,13 @@ src/
 ├── App.tsx
 ├── components/
 │   └── VirtualizedGrid.tsx
+├── hooks/
+│   └── useShuffleOrder.ts
 ├── lib/
-│   └── dataset.ts
+│   ├── async.ts
+│   ├── dataset.ts
+│   ├── filter.ts
+│   └── shuffle.ts
 ├── index.css
 └── main.tsx
 ```

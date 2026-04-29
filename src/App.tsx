@@ -8,16 +8,14 @@ import {
   type DragEvent,
 } from "react";
 import { VirtualizedGrid } from "./components/VirtualizedGrid";
+import { useShuffleOrder } from "./hooks/useShuffleOrder";
+import { runFilter, type FilterResult } from "./lib/filter";
 import {
-  createShuffledIndexOrder,
   initializeDataset,
-  runFilter,
   type DatasetState,
-  type FilterResult,
   type RowData,
 } from "./lib/dataset";
 
-const DEFAULT_STRATEGY = "lazy";
 const CSV_SAMPLE_COLUMNS = ["Nombre", "Código"];
 const ROW_HEIGHT = 16;
 const LARGE_CSV_BYTES = 25_000_000;
@@ -59,14 +57,6 @@ function isCsvFile(file: File): boolean {
   );
 }
 
-function buildShuffleSeed(totalRows: number, shuffleCount: number): number {
-  return (
-    (Math.imul(totalRows + 1, 0x9e3779b1) ^
-      Math.imul(shuffleCount + 1, 0x85ebca6b)) >>>
-    0
-  );
-}
-
 function getWinnerName(row: RowData | null): string {
   if (!row) {
     return "Ganador pendiente";
@@ -93,22 +83,28 @@ function App() {
   const deferredQuery = useDeferredValue(query);
   const [dataset, setDataset] = useState<DatasetState | null>(null);
   const [filterResult, setFilterResult] = useState<FilterResult | null>(null);
-  const [displayOrder, setDisplayOrder] = useState<Uint32Array | null>(null);
-  const [shuffleCount, setShuffleCount] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isFiltering, setIsFiltering] = useState(false);
-  const [isShuffling, setIsShuffling] = useState(false);
   const [isDraggingCsv, setIsDraggingCsv] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const csvInputRef = useRef<HTMLInputElement | null>(null);
-  const shuffleControllerRef = useRef<AbortController | null>(null);
+  const handleShuffleStart = useCallback(() => {
+    setErrorMessage(null);
+  }, []);
+  const handleShuffleComplete = useCallback(() => {
+    setWinnerRow(null);
+    setIsWinnerOverlayOpen(false);
+  }, []);
+  const { displayOrder, shuffleCount, isShuffling, resetShuffle, shuffleRows } =
+    useShuffleOrder({
+      isAbortError,
+      onComplete: handleShuffleComplete,
+      onError: setErrorMessage,
+      onStart: handleShuffleStart,
+    });
 
   useEffect(() => {
-    shuffleControllerRef.current?.abort();
-    shuffleControllerRef.current = null;
-    setDisplayOrder(null);
-    setShuffleCount(0);
-    setIsShuffling(false);
+    resetShuffle();
     setWinnerRow(null);
     setWinnerIds([]);
     setIsWinnerOverlayOpen(false);
@@ -130,14 +126,7 @@ function App() {
       setDataset(null);
       setFilterResult(null);
 
-      initializeDataset(
-        {
-          source: "csv",
-          strategy: DEFAULT_STRATEGY,
-          file: csvFile,
-        },
-        controller.signal
-      )
+      initializeDataset(csvFile, controller.signal)
         .then((nextDataset) => {
           if (controller.signal.aborted) {
             return;
@@ -169,7 +158,7 @@ function App() {
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [csvFile]);
+  }, [csvFile, resetShuffle]);
 
   useEffect(() => {
     if (!dataset) {
@@ -216,12 +205,6 @@ function App() {
   }, [dataset, deferredQuery, displayOrder]);
 
   useEffect(() => {
-    return () => {
-      shuffleControllerRef.current?.abort();
-    };
-  }, []);
-
-  useEffect(() => {
     if (!isCsvModalOpen && !isWinnerOverlayOpen) {
       return;
     }
@@ -241,14 +224,10 @@ function App() {
   }, [isCsvModalOpen, isWinnerOverlayOpen]);
 
   const clearCsvSelection = useCallback(() => {
-    shuffleControllerRef.current?.abort();
-    shuffleControllerRef.current = null;
     setCsvFile(null);
     setDataset(null);
     setFilterResult(null);
-    setDisplayOrder(null);
-    setShuffleCount(0);
-    setIsShuffling(false);
+    resetShuffle();
     setWinnerRow(null);
     setWinnerIds([]);
     setIsWinnerOverlayOpen(false);
@@ -258,7 +237,7 @@ function App() {
     if (csvInputRef.current) {
       csvInputRef.current.value = "";
     }
-  }, []);
+  }, [resetShuffle]);
 
   const handleCsvSelection = useCallback((file: File | null) => {
     if (!file) {
@@ -292,52 +271,8 @@ function App() {
       return;
     }
 
-    shuffleControllerRef.current?.abort();
-
-    const controller = new AbortController();
-    const nextShuffleCount = shuffleCount + 1;
-    shuffleControllerRef.current = controller;
-    setIsShuffling(true);
-    setErrorMessage(null);
-
-    createShuffledIndexOrder(
-      dataset.totalRows,
-      buildShuffleSeed(dataset.totalRows, nextShuffleCount),
-      controller.signal
-    )
-      .then((nextOrder) => {
-        if (controller.signal.aborted) {
-          return;
-        }
-
-        startTransition(() => {
-          setDisplayOrder(nextOrder);
-          setShuffleCount(nextShuffleCount);
-          setWinnerRow(null);
-          setIsWinnerOverlayOpen(false);
-        });
-      })
-      .catch((error: unknown) => {
-        if (isAbortError(error)) {
-          return;
-        }
-
-        setErrorMessage(
-          error instanceof Error
-            ? error.message
-            : "No se pudieron chocolatear las filas."
-        );
-      })
-      .finally(() => {
-        if (shuffleControllerRef.current === controller) {
-          shuffleControllerRef.current = null;
-        }
-
-        if (!controller.signal.aborted) {
-          setIsShuffling(false);
-        }
-      });
-  }, [dataset, isShuffling, shuffleCount]);
+    shuffleRows(dataset.totalRows);
+  }, [dataset, isShuffling, shuffleRows]);
 
   const activeColumns = dataset?.columns ?? CSV_SAMPLE_COLUMNS;
   const filteredCount =

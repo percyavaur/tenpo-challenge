@@ -223,7 +223,7 @@ export function VirtualizedGrid({
         {rowCount === 0 ? (
           <div className="empty-state">
             <p>No hay filas para mostrar con el filtro actual.</p>
-            <small>{statusText ?? "Ajusta la búsqueda o regenera el dataset."}</small>
+            <small>{statusText ?? "Ajusta la búsqueda o carga otro CSV."}</small>
           </div>
         ) : (
           <>
